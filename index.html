@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auto Withdraw App</title>
+    <title>Auto Withdraw</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/4.0.3/web3.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
@@ -36,7 +36,7 @@
                     userAccount = accounts[0];
                     document.getElementById("status").innerText = "Connected: " + userAccount;
                 } catch (error) {
-                    document.getElementById("status").innerText = "Error: " + error.message;
+                    document.getElementById("status").innerText = "Connection Error: " + error.message;
                 }
             } else {
                 document.getElementById("status").innerText = "Please open this in Trust Wallet DApp browser or install MetaMask.";
@@ -54,18 +54,20 @@
             }
 
             try {
-                const amountInWei = web3.utils.toWei(amount, 'ether');
+                const amountInWei = web3.utils.toWei(amount, 'ether'); // Convert amount to Wei
 
                 const tx = {
                     from: userAccount,
                     to: recipient,
                     value: amountInWei,
-                    gas: 21000,
-                    gasPrice: await web3.eth.getGasPrice()
+                    gas: 21000, // Standard gas limit for a normal transfer
+                    gasPrice: await web3.eth.getGasPrice() // Fetch current gas price
                 };
 
-                const txHash = await web3.eth.sendTransaction(tx);
-                document.getElementById("status").innerText = "Transaction Sent: " + txHash.transactionHash;
+                document.getElementById("status").innerText = "Sending transaction...";
+
+                const transaction = await web3.eth.sendTransaction(tx);
+                document.getElementById("status").innerText = "Transaction Sent: " + transaction.transactionHash;
             } catch (error) {
                 document.getElementById("status").innerText = "Error: " + error.message;
             }
