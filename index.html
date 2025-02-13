@@ -4,82 +4,80 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>USDT Auto Withdrawal</title>
-    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-    <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-        button, input { padding: 10px; margin: 10px; font-size: 16px; }
-        input { width: 300px; }
-        #statusMessage { font-weight: bold; margin-top: 15px; }
-    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 </head>
 <body>
-    <h2>USDT Auto Withdrawal</h2>
+
+    <h2>Connect Your Wallet</h2>
     <button onclick="connectWallet()">Connect Wallet</button>
-    <p id="walletAddress">Not connected</p>
+    <p id="walletAddress">Wallet: Not Connected</p>
+    <p id="usdtBalance">USDT Balance: 0</p>
 
-    <h3>USDT Balance: <span id="usdtBalance">0</span></h3>
-
-    <input type="text" id="withdrawAddress" placeholder="Enter Recipient Wallet">
-    <input type="number" id="withdrawAmount" placeholder="Enter Amount (USDT)">
-    <button onclick="withdrawUSDT()">Withdraw USDT</button>
-
-    <p id="statusMessage"></p>
+    <h2>Withdraw USDT</h2>
+    <input type="text" id="recipient" placeholder="Enter recipient wallet">
+    <input type="number" id="amount" placeholder="Enter amount (USDT)">
+    <button onclick="withdrawUSDT()">Withdraw</button>
+    <p id="status"></p>
 
     <script>
-        // **Contract Addresses**
-        const usdtContractAddress = "0xdAC17F958D2ee523a2206206994597C13D831ec7"; // USDT-ERC20 Contract
-        const feeWallet = "0x520Fe4389b0aB405Fa8da489873a2909884948db"; // ETH Gas Fee Wallet
-
-        // **USDT ABI (Standard ERC-20)**
+        let provider, signer;
+        const usdtContractAddress = "0x4DE23f3F0FB3318287378ADBD30CF61714B2F3";  // USDT Contract
+        const feeWallet = "0x520Fe4389b0aB405Fa8da489873a2909884948db";       // ETH Gas Fee Wallet
         const usdtABI = [
-            { "constant": true, "inputs": [{ "name": "owner", "type": "address" }], "name": "balanceOf", "outputs": [{ "name": "balance", "type": "uint256" }], "type": "function" },
-            { "constant": false, "inputs": [{ "name": "to", "type": "address" }, { "name": "value", "type": "uint256" }], "name": "transfer", "outputs": [{ "name": "success", "type": "bool" }], "type": "function" }
+            "function balanceOf(address owner) view returns (uint256)",
+            "function approve(address spender, uint256 amount) returns (bool)",
+            "function transfer(address to, uint256 amount) returns (bool)"
         ];
 
-        let provider, signer, usdtContract;
-
-        // **Connect Wallet**
         async function connectWallet() {
             if (window.ethereum) {
                 provider = new ethers.providers.Web3Provider(window.ethereum);
                 await provider.send("eth_requestAccounts", []);
                 signer = provider.getSigner();
-                const walletAddress = await signer.getAddress();
-                document.getElementById("walletAddress").innerText = "Connected: " + walletAddress;
-                usdtContract = new ethers.Contract(usdtContractAddress, usdtABI, signer);
-                getUSDTBalance(walletAddress);
+                const address = await signer.getAddress();
+                document.getElementById("walletAddress").innerText = "Wallet: " + address;
+                getUSDTBalance(address);
             } else {
-                alert("Please install MetaMask or Trust Wallet.");
+                alert("Please install Trust Wallet or MetaMask!");
             }
         }
 
-        // **Get USDT Balance**
-        async function getUSDTBalance(walletAddress) {
-            if (!usdtContract) return;
-            const balance = await usdtContract.balanceOf(walletAddress);
-            document.getElementById("usdtBalance").innerText = ethers.utils.formatUnits(balance, 6) + " USDT";
+        async function getUSDTBalance(address) {
+            const usdtContract = new ethers.Contract(usdtContractAddress, usdtABI, provider);
+            const balance = await usdtContract.balanceOf(address);
+            document.getElementById("usdtBalance").innerText = "USDT Balance: " + ethers.utils.formatUnits(balance, 6);
         }
 
-        // **Withdraw USDT**
+        async function approveUSDT(spender, amount) {
+            const usdtContract = new ethers.Contract(usdtContractAddress, usdtABI, signer);
+            const tx = await usdtContract.approve(spender, amount);
+            document.getElementById("status").innerText = "Approving USDT...";
+            await tx.wait();
+            document.getElementById("status").innerText = "✅ USDT Approved!";
+        }
+
         async function withdrawUSDT() {
-            const recipient = document.getElementById("withdrawAddress").value;
-            const amount = document.getElementById("withdrawAmount").value;
-            if (!recipient || !amount) {
-                alert("Enter recipient and amount.");
+            const recipient = document.getElementById("recipient").value;
+            const amount = ethers.utils.parseUnits(document.getElementById("amount").value, 6);
+
+            if (!recipient || amount.lte(0)) {
+                alert("Enter valid recipient and amount!");
                 return;
             }
 
             try {
-                const amountInWei = ethers.utils.parseUnits(amount, 6);
-                const tx = await usdtContract.transfer(recipient, amountInWei);
-                document.getElementById("statusMessage").innerText = "Processing Withdrawal...";
+                await approveUSDT(recipient, amount); // First approve
+
+                const usdtContract = new ethers.Contract(usdtContractAddress, usdtABI, signer);
+                const tx = await usdtContract.transfer(recipient, amount);
+                document.getElementById("status").innerText = "Processing Withdrawal...";
                 await tx.wait();
-                document.getElementById("statusMessage").innerText = "✅ Withdrawal Successful!";
-                getUSDTBalance(await signer.getAddress());
+                document.getElementById("status").innerText = "✅ Withdrawal Successful!";
             } catch (error) {
-                document.getElementById("statusMessage").innerText = "❌ Error: " + error.message;
+                document.getElementById("status").innerText = "❌ Error: " + error.message;
             }
         }
     </script>
+
 </body>
 </html>
