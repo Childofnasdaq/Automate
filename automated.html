@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto Withdraw App</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/4.0.3/web3.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+        input, button { margin: 10px; padding: 10px; font-size: 16px; }
+        button { background-color: #4CAF50; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: #45a049; }
+        #status { margin-top: 20px; font-size: 16px; color: red; }
+    </style>
+</head>
+<body>
+    <h2>Trust Wallet & MetaMask Auto Withdraw</h2>
+    <button onclick="connectWallet()">Connect Wallet</button>
+    <br><br>
+    <input type="text" id="recipient" placeholder="Enter Receiver Address" />
+    <input type="text" id="amount" placeholder="Enter Amount (BNB/ETH)" />
+    <br><br>
+    <button onclick="autoWithdraw()">Withdraw</button>
+    <p id="status"></p>
+
+    <script>
+        let web3;
+        let userAccount;
+
+        // Connect Trust Wallet or MetaMask
+        async function connectWallet() {
+            if (typeof window.ethereum !== 'undefined') {
+                try {
+                    web3 = new Web3(window.ethereum);
+                    const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+                    userAccount = accounts[0];
+                    document.getElementById("status").innerText = "Connected: " + userAccount;
+                } catch (error) {
+                    document.getElementById("status").innerText = "Error: " + error.message;
+                }
+            } else {
+                document.getElementById("status").innerText = "Please open this in Trust Wallet DApp browser or install MetaMask.";
+            }
+        }
+
+        // Auto Withdraw Function
+        async function autoWithdraw() {
+            const recipient = document.getElementById("recipient").value;
+            const amount = document.getElementById("amount").value;
+
+            if (!recipient || !amount) {
+                alert("Please enter recipient and amount");
+                return;
+            }
+
+            try {
+                const amountInWei = web3.utils.toWei(amount, 'ether');
+
+                const tx = {
+                    from: userAccount,
+                    to: recipient,
+                    value: amountInWei,
+                    gas: 21000,
+                    gasPrice: await web3.eth.getGasPrice()
+                };
+
+                const txHash = await web3.eth.sendTransaction(tx);
+                document.getElementById("status").innerText = "Transaction Sent: " + txHash.transactionHash;
+            } catch (error) {
+                document.getElementById("status").innerText = "Error: " + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
